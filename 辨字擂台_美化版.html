@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>辨字擂台</title>
+<style>
+  html, body{ height:100%; margin:0; }
+  body{ background:#14161c; }
+
+  @import url('https://fonts.googleapis.com/css2?family=cwTeXKai&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+
+  :root{
+    --ink:#14161c;
+    --ink-2:#1b1e26;
+    --ink-3:#242833;
+    --paper:#f3ece0;
+    --paper-2:#e9dfcd;
+    --paper-ink:#211d16;
+    --muted:#9691a3;
+    --muted-2:#c9c4d6;
+    --seal:#b6402f;
+    --seal-2:#8f2f22;
+    --jade:#3f9068;
+    --gold:#cf9f47;
+    --gold-2:#e8c274;
+    --shadow: 0 18px 40px -18px rgba(0,0,0,.65);
+    color-scheme: dark;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, #23283a 0%, transparent 60%),
+      var(--ink);
+    color:var(--muted-2);
+    font-family:'Noto Sans TC', system-ui, -apple-system, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior:none;
+  }
+
+  .kai{ font-family:'cwTeXKai','BiauKai','DFKai-SB',serif; }
+
+  #app{
+    max-width:480px;
+    margin:0 auto;
+    padding: 28px 16px 40px;
+    min-height:100%;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+  }
+
+  .topbar{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    padding: 0 4px;
+  }
+  .topbar h1{
+    font-size:15px;
+    letter-spacing:.14em;
+    margin:0;
+    color:var(--muted-2);
+    font-weight:700;
+  }
+  .topbar .seal-badge{
+    width:30px;height:30px;border-radius:6px;
+    background:linear-gradient(160deg, var(--seal), var(--seal-2));
+    display:flex;align-items:center;justify-content:center;
+    color:#f6e6c8; font-size:15px; font-weight:900;
+    box-shadow: var(--shadow);
+    transform: rotate(-3deg);
+  }
+
+  section{ display:flex; flex-direction:column; }
+
+  /* ---------- Start screen ---------- */
+  #start-screen{
+    gap:26px;
+    padding: 18px 6px 6px;
+  }
+  .hero{
+    background:
+      radial-gradient(120% 140% at 20% -20%, rgba(207,159,71,.18), transparent 60%),
+      linear-gradient(180deg, var(--ink-3), var(--ink-2));
+    border:1px solid rgba(232,194,116,.14);
+    border-radius:22px;
+    padding:34px 24px 30px;
+    text-align:center;
+    box-shadow: var(--shadow);
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";
+    position:absolute; inset:auto -30% -60% -30%;
+    height:220px;
+    background: radial-gradient(closest-side, rgba(182,64,47,.28), transparent 70%);
+    filter: blur(10px);
+  }
+  .hero .glyphs{
+    font-size:44px;
+    letter-spacing:.35em;
+    color:var(--gold-2);
+    text-shadow:0 2px 0 rgba(0,0,0,.4);
+    margin:0 0 6px 4px;
+    position:relative;
+  }
+  .hero h2{
+    margin:10px 0 8px;
+    font-size:22px;
+    color:#f4ecd8;
+    font-weight:700;
+    letter-spacing:.04em;
+    position:relative;
+  }
+  .hero p{
+    margin:0;
+    font-size:13.5px;
+    line-height:1.75;
+    color:var(--muted);
+    position:relative;
+  }
+
+  .level-preview{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    flex-wrap:wrap;
+  }
+  .level-chip{
+    flex:1 1 70px;
+    background:var(--ink-3);
+    border:1px solid rgba(255,255,255,.06);
+    border-radius:12px;
+    padding:10px 6px;
+    text-align:center;
+  }
+  .level-chip .n{ font-size:10px; color:var(--muted); letter-spacing:.1em; }
+  .level-chip .c{ font-size:24px; color:var(--gold-2); margin-top:2px; }
+
+  button{ font-family:inherit; }
+  .btn{
+    appearance:none; border:none; cursor:pointer;
+    touch-action:manipulation; user-select:none;
+    border-radius:14px;
+    font-weight:700;
+    font-size:16px;
+    padding:16px 20px;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    transition: transform .12s ease, filter .12s ease;
+  }
+  .btn:active{ transform: scale(.97); }
+  .btn-primary{
+    background: linear-gradient(180deg, var(--gold-2), var(--gold));
+    color:#241a08;
+    box-shadow: 0 14px 30px -12px rgba(207,159,71,.55);
+  }
+  .btn-ghost{
+    background:var(--ink-3);
+    color:var(--muted-2);
+    border:1px solid rgba(255,255,255,.08);
+  }
+
+  .rules{
+    display:flex; flex-direction:column; gap:10px;
+    background:var(--ink-2);
+    border:1px solid rgba(255,255,255,.06);
+    border-radius:16px;
+    padding:16px 16px;
+  }
+  .rules .row{ display:flex; gap:10px; align-items:flex-start; font-size:12.5px; line-height:1.6; color:var(--muted-2); }
+  .rules .dot{
+    flex:none; width:20px;height:20px;border-radius:6px;
+    background:var(--ink-3); color:var(--gold-2);
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px; font-weight:700; margin-top:1px;
+  }
+
+  /* ---------- Game screen ---------- */
+  #game-screen{ gap:16px; }
+
+  .hud{
+    display:flex; align-items:center; gap:10px;
+  }
+  .hud .pill{
+    background:var(--ink-2);
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:999px;
+    padding:8px 14px;
+    font-size:12px;
+    color:var(--muted-2);
+    display:flex; align-items:center; gap:6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .hud .pill b{ color:var(--gold-2); font-size:13px; }
+  .hud .spacer{ flex:1; }
+
+  .target-card{
+    background:
+      radial-gradient(140% 160% at 80% -30%, rgba(182,64,47,.22), transparent 55%),
+      linear-gradient(180deg, var(--ink-3), var(--ink-2));
+    border:1px solid rgba(232,194,116,.16);
+    border-radius:20px;
+    padding:18px 18px 16px;
+    display:flex; align-items:center; gap:16px;
+    box-shadow: var(--shadow);
+  }
+  .target-card .label{
+    font-size:11px; letter-spacing:.16em; color:var(--muted); margin-bottom:4px;
+  }
+  .target-card .glyph{
+    font-size:46px; color:#fbeecd;
+    text-shadow: 0 0 22px rgba(232,194,116,.35);
+  }
+  .target-card .speak{
+    margin-left:auto;
+    flex:none;
+    width:46px;height:46px;border-radius:12px;
+    background:var(--ink-3); border:1px solid rgba(255,255,255,.08);
+    color:var(--gold-2);
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;
+    touch-action:manipulation; user-select:none; cursor:pointer;
+  }
+  .target-card .speak:active{ transform:scale(.92); }
+
+  .progress-track{
+    height:7px; border-radius:99px; background:var(--ink-3);
+    overflow:hidden; border:1px solid rgba(255,255,255,.05);
+  }
+  .progress-fill{
+    height:100%; width:0%;
+    background:linear-gradient(90deg, var(--seal), var(--gold));
+    transition: width .25s ease;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap:8px;
+  }
+  .cell{
+    aspect-ratio:1/1;
+    border-radius:12px;
+    background:var(--paper);
+    color:var(--paper-ink);
+    border:1px solid var(--paper-2);
+    font-size:clamp(28px, 9vw, 40px);
+    display:flex;align-items:center;justify-content:center;
+    touch-action:manipulation;
+    user-select:none;
+    cursor:pointer;
+    box-shadow: 0 6px 14px -8px rgba(0,0,0,.55);
+    transition: transform .12s ease, background .2s ease, border-color .2s ease, opacity .2s ease;
+  }
+  .cell:active{ transform: scale(.92); }
+  .cell.found{
+    background: linear-gradient(180deg, var(--gold-2), var(--gold));
+    color:#241a08;
+    border-color: transparent;
+    box-shadow: 0 0 0 3px rgba(232,194,116,.25), 0 10px 20px -10px rgba(207,159,71,.7);
+  }
+  .cell.wrong{
+    background: var(--seal);
+    color:#fbe4de;
+    border-color: transparent;
+    animation: shake .32s ease;
+  }
+  .cell.locked{ pointer-events:none; }
+
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-5px); }
+    75%{ transform:translateX(5px); }
+  }
+
+  .toast{
+    position:fixed;
+    left:50%; bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+    transform:translateX(-50%) translateY(12px);
+    background:var(--jade);
+    color:#eafff2;
+    padding:12px 22px;
+    border-radius:999px;
+    font-size:14px; font-weight:700;
+    box-shadow: var(--shadow);
+    opacity:0; pointer-events:none;
+    transition: opacity .25s ease, transform .25s ease;
+    z-index:5;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ---------- End screen ---------- */
+  #end-screen{ gap:20px; padding-top:8px; }
+  .result-card{
+    background:linear-gradient(180deg, var(--ink-3), var(--ink-2));
+    border:1px solid rgba(232,194,116,.16);
+    border-radius:22px;
+    padding:30px 22px;
+    text-align:center;
+    box-shadow: var(--shadow);
+  }
+  .result-card .rank{
+    font-size:56px; font-weight:900; color:var(--gold-2);
+    line-height:1;
+    text-shadow:0 0 30px rgba(232,194,116,.3);
+  }
+  .result-card .rank-label{
+    margin-top:6px; font-size:13px; color:var(--muted); letter-spacing:.1em;
+  }
+  .stat-row{
+    display:flex; gap:10px; margin-top:22px;
+  }
+  .stat{
+    flex:1; background:var(--ink); border:1px solid rgba(255,255,255,.06);
+    border-radius:14px; padding:14px 8px;
+  }
+  .stat .v{ font-size:20px; color:#f4ecd8; font-weight:700; font-variant-numeric:tabular-nums; }
+  .stat .k{ font-size:10.5px; color:var(--muted); margin-top:3px; letter-spacing:.06em; }
+
+  [hidden]{ display:none !important; }
+
+  /* ---------- Level-clear celebration ---------- */
+  .celebrate{
+    position:fixed; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+    pointer-events:none;
+    opacity:0;
+    z-index:20;
+    transition: opacity .25s ease;
+  }
+  .celebrate.show{ opacity:1; }
+  .celebrate-card{
+    background:linear-gradient(180deg, var(--ink-3), var(--ink-2));
+    border:1px solid rgba(232,194,116,.35);
+    border-radius:20px;
+    padding:22px 30px;
+    text-align:center;
+    box-shadow: 0 20px 50px -14px rgba(0,0,0,.7), 0 0 0 3px rgba(232,194,116,.15);
+    transform: scale(.7);
+    transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+  }
+  .celebrate.show .celebrate-card{ transform: scale(1); }
+  .celebrate-emoji{ font-size:46px; line-height:1; }
+  .celebrate-text{ margin-top:6px; font-size:20px; font-weight:700; color:#fbeecd; letter-spacing:.04em; }
+  .confetti-piece{
+    position:fixed;
+    top:-40px;
+    font-size:22px;
+    will-change: transform, opacity;
+    animation-name: confetti-fall;
+    animation-timing-function: ease-in;
+    animation-fill-mode: forwards;
+    z-index:19;
+  }
+  @keyframes confetti-fall{
+    0%{ transform: translateY(0) rotate(0deg); opacity:1; }
+    100%{ transform: translateY(110vh) rotate(360deg); opacity:0; }
+  }
+</style>
+<style>
+/* ---- 美化版覆寫：保留原遊戲功能 ---- */
+body{
+  background:
+    radial-gradient(circle at 12% 8%, rgba(240,204,120,.12), transparent 26%),
+    radial-gradient(circle at 88% 18%, rgba(63,155,114,.10), transparent 28%),
+    linear-gradient(180deg,#171b24 0%,#101318 100%) !important;
+}
+body::before,body::after{content:"";position:fixed;border-radius:50%;pointer-events:none;z-index:0;filter:blur(5px);opacity:.38}
+body::before{width:250px;height:250px;left:-120px;bottom:8%;background:rgba(182,64,47,.2)}
+body::after{width:320px;height:320px;right:-170px;top:18%;background:rgba(207,159,71,.14)}
+#app{max-width:540px!important;padding:24px 16px 42px!important;position:relative;z-index:1}
+.topbar{align-items:center!important;padding-top:4px!important}
+.topbar h1{font-size:16px!important;letter-spacing:.2em!important;color:#f4ecd8!important;text-shadow:0 1px 0 rgba(0,0,0,.4)}
+.topbar .seal-badge{width:34px!important;height:34px!important;border-radius:9px!important;border:1px solid rgba(255,255,255,.15)!important;box-shadow:0 10px 20px -12px rgba(182,64,47,.85)!important}
+#start-screen{gap:20px!important;padding-top:8px!important}
+.hero{border-radius:28px!important;padding:34px 24px 30px!important;background:linear-gradient(135deg,rgba(255,255,255,.05),transparent 32%),radial-gradient(120% 120% at 20% -20%,rgba(232,194,116,.22),transparent 58%),linear-gradient(180deg,#293240,#202632)!important;border:1px solid rgba(232,194,116,.22)!important;box-shadow:0 20px 44px -20px rgba(0,0,0,.72)!important}
+.hero .glyphs{font-size:clamp(44px,12vw,58px)!important;letter-spacing:.2em!important;margin-left:.2em!important;text-shadow:0 3px 0 rgba(0,0,0,.3),0 0 24px rgba(232,194,116,.18)!important}
+.hero h2{font-size:25px!important;color:#fff7e6!important}
+.hero p{font-size:14px!important;line-height:1.85!important;color:#c9ced8!important;max-width:390px;margin-inline:auto!important}
+.level-preview{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:10px!important}
+.level-chip{border-radius:16px!important;padding:11px 6px 10px!important;background:linear-gradient(180deg,rgba(255,255,255,.035),transparent),#232a35!important;box-shadow:0 10px 26px -18px rgba(0,0,0,.65)!important}
+.level-chip .c{font-size:28px!important;text-shadow:0 0 14px rgba(232,194,116,.18)!important}
+.rules{border-radius:20px!important;padding:17px!important;gap:11px!important;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent),#1e2430!important;box-shadow:0 10px 28px -20px rgba(0,0,0,.65)!important}
+.rules .row{font-size:13px!important;line-height:1.7!important;color:#cdd2dc!important}
+.rules .dot{width:24px!important;height:24px!important;border-radius:8px!important;background:#2a3340!important;border:1px solid rgba(232,194,116,.13)!important}
+.btn{border-radius:16px!important;font-size:17px!important;min-height:54px!important;font-weight:900!important;box-shadow:0 14px 30px -14px rgba(0,0,0,.6)}
+.btn-primary{background:linear-gradient(180deg,#f5d78e 0%,#e8c274 48%,#cf9f47 100%)!important;box-shadow:0 16px 32px -14px rgba(207,159,71,.72),inset 0 1px rgba(255,255,255,.45)!important}
+.btn-ghost{background:#252d39!important;border:1px solid rgba(255,255,255,.09)!important}
+#game-screen{gap:15px!important}
+.hud{gap:8px!important}
+.hud .pill{background:#222a35!important;border:1px solid rgba(255,255,255,.075)!important;box-shadow:0 6px 16px -12px rgba(0,0,0,.55)!important}
+.target-card{border-radius:24px!important;padding:18px!important;background:linear-gradient(135deg,rgba(255,255,255,.04),transparent 34%),radial-gradient(120% 130% at 88% -30%,rgba(182,64,47,.23),transparent 55%),linear-gradient(180deg,#2a3340,#202731)!important;border:1px solid rgba(232,194,116,.18)!important;box-shadow:0 18px 42px -18px rgba(0,0,0,.58)!important}
+.target-card::after{content:"目標";position:absolute;right:74px;top:12px;font-size:10px;letter-spacing:.16em;color:rgba(232,194,116,.34);border:1px solid rgba(232,194,116,.16);border-radius:999px;padding:3px 7px}
+.target-card .glyph{font-size:58px!important;color:#fff2cf!important;text-shadow:0 0 26px rgba(232,194,116,.28)!important}
+.target-card .speak{width:50px!important;height:50px!important;border-radius:15px!important;background:linear-gradient(180deg,rgba(255,255,255,.05),transparent),#2b3441!important;box-shadow:0 8px 18px -14px rgba(0,0,0,.65)!important}
+.progress-track{height:10px!important;background:#252d39!important;box-shadow:inset 0 1px 4px rgba(0,0,0,.35)!important}
+.progress-fill{background:linear-gradient(90deg,#b6402f,#cf9f47,#e8c274)!important;box-shadow:0 0 18px rgba(207,159,71,.32)!important}
+.grid{gap:9px!important;padding:12px!important;border-radius:22px!important;background:linear-gradient(180deg,rgba(255,255,255,.03),transparent),#1b212b!important;border:1px solid rgba(255,255,255,.07)!important;box-shadow:0 10px 28px -18px rgba(0,0,0,.6)!important}
+.cell{border-radius:14px!important;background:linear-gradient(180deg,rgba(255,255,255,.52),rgba(255,255,255,.06)),#fffaf0!important;border:1px solid #ead9bb!important;font-size:clamp(30px,9.4vw,44px)!important;box-shadow:0 7px 14px -9px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.9)!important}
+.cell.found{background:linear-gradient(180deg,#f7dda0,#e8c274 50%,#cf9f47)!important;animation:pop .22s ease!important}
+.cell.wrong{background:linear-gradient(180deg,#dd6755,#b6402f)!important}
+@keyframes pop{0%{transform:scale(.86)}70%{transform:scale(1.07)}100%{transform:scale(1)}}
+.toast{background:linear-gradient(180deg,#3f9068,#2f7e5c)!important;font-weight:900!important;border:1px solid rgba(255,255,255,.16)!important}
+.result-card{border-radius:28px!important;padding:32px 22px 28px!important;background:radial-gradient(110% 100% at 50% -20%,rgba(232,194,116,.16),transparent 58%),linear-gradient(180deg,#29323f,#1f2631)!important;border:1px solid rgba(232,194,116,.2)!important}
+.result-card .rank{font-size:72px!important;text-shadow:0 0 36px rgba(232,194,116,.3)!important}
+.stat{border-radius:16px!important;padding:15px 8px!important;background:#181d25!important}
+.stat .v{font-size:22px!important;font-weight:900!important}
+.celebrate{background:radial-gradient(circle at center,rgba(0,0,0,.18),transparent 58%)!important}
+.celebrate-card{border-radius:24px!important;padding:24px 34px!important;background:linear-gradient(135deg,rgba(255,255,255,.04),transparent 35%),linear-gradient(180deg,#2e3744,#202732)!important}
+.celebrate-emoji{font-size:52px!important}.celebrate-text{font-size:22px!important;font-weight:900!important}
+@media (hover:hover){.btn:hover{filter:brightness(1.06);transform:translateY(-1px)}.cell:hover{transform:translateY(-2px);box-shadow:0 10px 18px -10px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.9)!important}.target-card .speak:hover{filter:brightness(1.08)}}
+@media(max-width:420px){#app{padding:18px 12px 32px!important}.hero{padding:28px 18px 24px!important}.grid{gap:7px!important;padding:9px!important}.cell{border-radius:12px!important}.hud{gap:6px!important}.hud .pill{padding:7px 10px!important;font-size:11px!important}.target-card .glyph{font-size:52px!important}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="topbar">
+    <h1 class="kai">辨&nbsp;字&nbsp;擂&nbsp;台</h1>
+    <div class="seal-badge kai">識</div>
+  </div>
+
+  <section id="start-screen">
+    <div class="hero">
+      <div class="glyphs kai">萬遇勵邁</div>
+      <h2 class="kai">眼力大考驗</h2>
+      <p>四個字形相近的國字輪番登場，每關在 25 格中找出全部 5 個目標字，考考你的觀察力！</p>
+    </div>
+
+    <div class="level-preview">
+      <div class="level-chip"><div class="n">第一關</div><div class="c kai">萬</div></div>
+      <div class="level-chip"><div class="n">第二關</div><div class="c kai">遇</div></div>
+      <div class="level-chip"><div class="n">第三關</div><div class="c kai">勵</div></div>
+      <div class="level-chip"><div class="n">第四關</div><div class="c kai">邁</div></div>
+    </div>
+
+    <div class="rules">
+      <div class="row"><div class="dot">1</div><div>畫面上方會顯示本關要尋找的目標字，並可點擊喇叭聽發音。</div></div>
+      <div class="row"><div class="dot">2</div><div>在下方 5×5 的字格中，點出所有和目標字完全相同的字。</div></div>
+      <div class="row"><div class="dot">3</div><div>點錯會扣分並發出提示音，找滿 5 個即可進入下一關。</div></div>
+    </div>
+
+    <button class="btn btn-primary" id="start-btn">開始挑戰 ▶</button>
+  </section>
+
+  <section id="game-screen" hidden>
+    <div class="hud">
+      <div class="pill">關卡 <b id="hud-level">1</b>／4</div>
+      <div class="pill">用時 <b id="hud-time">00:00</b></div>
+      <div class="spacer"></div>
+      <div class="pill">失誤 <b id="hud-mistakes">0</b></div>
+    </div>
+
+    <div class="target-card">
+      <div>
+        <div class="label">請找出這個字</div>
+        <div class="glyph kai" id="target-glyph">萬</div>
+      </div>
+      <div class="speak" id="speak-btn" aria-label="播放發音">🔊</div>
+    </div>
+
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+
+    <div class="grid kai" id="grid"></div>
+  </section>
+
+  <section id="end-screen" hidden>
+    <div class="result-card">
+      <div class="rank" id="final-rank">S</div>
+      <div class="rank-label">挑戰完成</div>
+      <div class="stat-row">
+        <div class="stat"><div class="v" id="final-time">00:00</div><div class="k">總用時</div></div>
+        <div class="stat"><div class="v" id="final-mistakes">0</div><div class="k">總失誤</div></div>
+        <div class="stat"><div class="v" id="final-levels">4</div><div class="k">通過關卡</div></div>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="retry-btn">再挑戰一次 ↻</button>
+    <button class="btn btn-ghost" id="home-btn">回到首頁</button>
+  </section>
+
+  <div class="toast" id="toast">過關！</div>
+
+  <div class="celebrate" id="celebrate">
+    <div class="celebrate-card">
+      <div class="celebrate-emoji">🎉</div>
+      <div class="celebrate-text kai">答對了！你真棒！</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var allChars = ['萬','遇','勵','邁'];
+  var levels = [
+    { target:'萬' },
+    { target:'遇' },
+    { target:'勵' },
+    { target:'邁' }
+  ];
+  var GRID_SIZE = 25;
+  var TARGET_COUNT = 5;
+
+  var state = {
+    levelIndex: 0,
+    found: 0,
+    mistakes: 0,
+    startTime: 0,
+    elapsedBeforePause: 0,
+    timerId: null,
+    running: false
+  };
+
+  var el = {
+    startScreen: document.getElementById('start-screen'),
+    gameScreen: document.getElementById('game-screen'),
+    endScreen: document.getElementById('end-screen'),
+    startBtn: document.getElementById('start-btn'),
+    retryBtn: document.getElementById('retry-btn'),
+    homeBtn: document.getElementById('home-btn'),
+    grid: document.getElementById('grid'),
+    targetGlyph: document.getElementById('target-glyph'),
+    speakBtn: document.getElementById('speak-btn'),
+    progressFill: document.getElementById('progress-fill'),
+    hudLevel: document.getElementById('hud-level'),
+    hudTime: document.getElementById('hud-time'),
+    hudMistakes: document.getElementById('hud-mistakes'),
+    toast: document.getElementById('toast'),
+    celebrate: document.getElementById('celebrate'),
+    finalRank: document.getElementById('final-rank'),
+    finalTime: document.getElementById('final-time'),
+    finalMistakes: document.getElementById('final-mistakes'),
+    finalLevels: document.getElementById('final-levels')
+  };
+
+  /* ---------------- Audio (Web Audio API, no external files) ---------------- */
+  var audioCtx = null;
+  function ensureAudio(){
+    try{
+      if(!audioCtx){
+        var AC = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AC();
+      }
+      if(audioCtx.state === 'suspended'){ audioCtx.resume(); }
+    }catch(e){ /* audio unavailable, fail silently */ }
+  }
+  function tone(freq, start, dur, type, peak){
+    if(!audioCtx) return;
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.value = freq;
+    var t0 = audioCtx.currentTime + start;
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(peak || 0.18, t0 + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+  function playDing(){
+    ensureAudio();
+    tone(880, 0, 0.14, 'triangle', 0.2);
+    tone(1318.5, 0.08, 0.18, 'triangle', 0.18);
+  }
+  function playBuzz(){
+    ensureAudio();
+    tone(160, 0, 0.16, 'sawtooth', 0.14);
+  }
+  function playFanfare(){
+    ensureAudio();
+    [523.25, 659.25, 783.99, 1046.5].forEach(function(f, i){
+      tone(f, i * 0.1, 0.22, 'triangle', 0.16);
+    });
+  }
+
+  /* ---------------- Speech synthesis ---------------- */
+  var synth = window.speechSynthesis || null;
+  function speak(text){
+    if(!synth) return;
+    try{
+      synth.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'zh-TW';
+      u.rate = 0.85;
+      synth.speak(u);
+    }catch(e){ /* speech unavailable, fail silently */ }
+  }
+
+  /* ---------------- Helpers ---------------- */
+  function shuffle(arr){
+    for(var i = arr.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+  function pad(n){ return n < 10 ? '0' + n : '' + n; }
+  function formatTime(ms){
+    var total = Math.floor(ms / 1000);
+    var m = Math.floor(total / 60);
+    var s = total % 60;
+    return pad(m) + ':' + pad(s);
+  }
+
+  /* ---------------- Timer ---------------- */
+  function startTimer(){
+    state.startTime = Date.now();
+    state.running = true;
+    if(state.timerId) clearInterval(state.timerId);
+    state.timerId = setInterval(function(){
+      if(!state.running) return;
+      var ms = state.elapsedBeforePause + (Date.now() - state.startTime);
+      el.hudTime.textContent = formatTime(ms);
+    }, 250);
+  }
+  function stopTimer(){
+    state.running = false;
+    state.elapsedBeforePause += Date.now() - state.startTime;
+    if(state.timerId) clearInterval(state.timerId);
+  }
+  function currentElapsed(){
+    return state.elapsedBeforePause + (state.running ? (Date.now() - state.startTime) : 0);
+  }
+
+  /* ---------------- Toast ---------------- */
+  var toastTimer = null;
+  function showToast(text){
+    el.toast.textContent = text;
+    el.toast.classList.add('show');
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.toast.classList.remove('show'); }, 900);
+  }
+
+  /* ---------------- Level-clear celebration ---------------- */
+  var CONFETTI_EMOJI = ['🎉','✨','🌟','🎊'];
+  function spawnConfetti(){
+    for(var i = 0; i < 14; i++){
+      var piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.textContent = CONFETTI_EMOJI[Math.floor(Math.random() * CONFETTI_EMOJI.length)];
+      piece.style.left = Math.round(Math.random() * 100) + 'vw';
+      var duration = 1.1 + Math.random() * 0.7;
+      piece.style.animationDuration = duration + 's';
+      piece.style.animationDelay = (Math.random() * 0.25) + 's';
+      document.body.appendChild(piece);
+      (function(node, life){
+        setTimeout(function(){ if(node.parentNode) node.parentNode.removeChild(node); }, (life + 0.3) * 1000);
+      })(piece, duration);
+    }
+  }
+  function celebrateLevelPass(){
+    playFanfare();
+    speak('答對了，你真棒');
+    spawnConfetti();
+    el.celebrate.classList.add('show');
+    setTimeout(function(){ el.celebrate.classList.remove('show'); }, 1000);
+  }
+
+  /* ---------------- Level building ---------------- */
+  function buildLevel(idx){
+    var level = levels[idx];
+    var target = level.target;
+    var decoyPool = allChars.filter(function(c){ return c !== target; });
+
+    var cells = [];
+    for(var i = 0; i < TARGET_COUNT; i++){ cells.push(target); }
+    for(var k = TARGET_COUNT; k < GRID_SIZE; k++){
+      cells.push(decoyPool[k % decoyPool.length]);
+    }
+    shuffle(cells);
+
+    el.grid.innerHTML = '';
+    cells.forEach(function(ch){
+      var btn = document.createElement('button');
+      btn.className = 'cell';
+      btn.type = 'button';
+      btn.textContent = ch;
+      btn.dataset.char = ch;
+      btn.addEventListener('click', function(){ onCellClick(btn, target); });
+      el.grid.appendChild(btn);
+    });
+
+    el.targetGlyph.textContent = target;
+    el.hudLevel.textContent = String(idx + 1);
+    state.found = 0;
+    el.progressFill.style.width = '0%';
+
+    speak('請找出' + target);
+  }
+
+  function onCellClick(btn, target){
+    if(btn.classList.contains('locked')) return;
+
+    if(btn.dataset.char === target){
+      btn.classList.add('found', 'locked');
+      state.found++;
+      playDing();
+      el.progressFill.style.width = Math.round((state.found / TARGET_COUNT) * 100) + '%';
+
+      if(state.found >= TARGET_COUNT){
+        celebrateLevelPass();
+        setTimeout(advanceLevel, 1150);
+      }
+    }else{
+      btn.classList.remove('wrong');
+      // force reflow so the shake animation can replay
+      void btn.offsetWidth;
+      btn.classList.add('wrong');
+      state.mistakes++;
+      el.hudMistakes.textContent = String(state.mistakes);
+      playBuzz();
+      setTimeout(function(){ btn.classList.remove('wrong'); }, 320);
+    }
+  }
+
+  function advanceLevel(){
+    if(state.levelIndex >= levels.length - 1){
+      finishGame();
+      return;
+    }
+    state.levelIndex++;
+    buildLevel(state.levelIndex);
+  }
+
+  /* ---------------- Screens ---------------- */
+  function goStart(){
+    el.startScreen.hidden = false;
+    el.gameScreen.hidden = true;
+    el.endScreen.hidden = true;
+  }
+
+  function goGame(){
+    el.startScreen.hidden = true;
+    el.gameScreen.hidden = false;
+    el.endScreen.hidden = true;
+  }
+
+  function goEnd(){
+    el.startScreen.hidden = true;
+    el.gameScreen.hidden = true;
+    el.endScreen.hidden = false;
+  }
+
+  function startGame(){
+    ensureAudio();
+    goGame();
+    state.levelIndex = 0;
+    state.mistakes = 0;
+    state.elapsedBeforePause = 0;
+    el.hudMistakes.textContent = '0';
+    el.hudTime.textContent = '00:00';
+    buildLevel(0);
+    startTimer();
+  }
+
+  function finishGame(){
+    stopTimer();
+    playFanfare();
+    var totalMs = currentElapsed();
+    var mistakes = state.mistakes;
+
+    var rank = 'S';
+    if(mistakes > 12 || totalMs > 120000) rank = 'C';
+    else if(mistakes > 6 || totalMs > 75000) rank = 'B';
+    else if(mistakes > 2 || totalMs > 45000) rank = 'A';
+
+    el.finalRank.textContent = rank;
+    el.finalTime.textContent = formatTime(totalMs);
+    el.finalMistakes.textContent = String(mistakes);
+    el.finalLevels.textContent = String(levels.length);
+
+    setTimeout(goEnd, 200);
+  }
+
+  /* ---------------- Wiring ---------------- */
+  el.startBtn.addEventListener('click', startGame);
+  el.retryBtn.addEventListener('click', startGame);
+  el.homeBtn.addEventListener('click', function(){ stopTimer(); goStart(); });
+  el.speakBtn.addEventListener('click', function(){
+    ensureAudio();
+    speak('請找出' + el.targetGlyph.textContent);
+  });
+
+  goStart();
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>找字遊戲：眼力大考驗</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            /* 預設字體改為標楷體優先，若無則使用 Noto Sans TC */
+            font-family: 'BiauKai', 'DFKai-SB', 'Noto Sans TC', sans-serif;
+            background-color: #0f172a; /* 深色背景 slate-900 */
+            overscroll-behavior: none; /* Prevent bounce effect on mobile */
+            touch-action: manipulation; /* 防止手機點擊兩下意外放大 */
+        }
+        
+        .char-cell {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+            -webkit-tap-highlight-color: transparent; /* 移除手機點擊預設的閃爍反白 */
+        }
+
+        .char-cell.clicked-correct {
+            transform: scale(0.95);
+            background-color: #d1fae5; /* 答對：淺綠色背景 */
+            border-color: #10b981;
+            color: #047857; /* 深綠色字體 */
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .char-cell.clicked-wrong {
+            transform: scale(0.95);
+            background-color: #fee2e2; /* 答錯：淺紅色背景 */
+            border-color: #ef4444;
+            color: #b91c1c; /* 深紅色字體 */
+            opacity: 0.8;
+            animation: shake 0.4s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0) scale(0.95); }
+            25% { transform: translateX(-5px) scale(0.95); }
+            50% { transform: translateX(5px) scale(0.95); }
+            75% { transform: translateX(-5px) scale(0.95); }
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        .animate-float-up {
+            animation: floatUp 0.5s ease-out forwards;
+        }
+
+        /* Prevent text selection on game board */
+        .no-select {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        /* Hide scrollbar for cleaner look if content overflows */
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4 text-slate-100 relative overflow-hidden bg-slate-900">
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="z-10 bg-slate-800/95 backdrop-blur-md p-8 rounded-3xl shadow-2xl text-center max-w-md w-full border border-slate-700 animate-float-up">
+        <div class="text-6xl mb-4">🔍</div>
+        <h1 class="text-3xl font-black text-indigo-300 mb-2">眼力大考驗</h1>
+        <p class="text-slate-300 mb-8">仔細觀察，找出指定的國字！<br>準備好迎接挑戰了嗎？</p>
+        <button onclick="startGame()" class="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl shadow-lg transition-transform transform active:scale-95 text-lg">
+            開始遊戲
+        </button>
+    </div>
+
+    <!-- Game Screen (Hidden initially) -->
+    <main id="game-screen" class="hidden w-full max-w-lg mx-auto flex flex-col items-center z-10 h-full max-h-screen justify-center">
+        
+        <!-- Header & Progress -->
+        <header class="w-full bg-slate-800/95 backdrop-blur-sm border border-slate-700 rounded-2xl p-4 shadow-sm mb-4 flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+                <div class="bg-indigo-900/50 border border-indigo-700 text-indigo-200 px-4 py-2 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                    <span class="text-lg font-bold">第 <span id="level-indicator" class="text-xl mx-1 text-indigo-300">1</span> 關</span>
+                </div>
+                
+                <!-- Voice Button -->
+                <button onclick="speakInstruction()" class="p-2 bg-slate-700 text-blue-400 rounded-full hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50" aria-label="朗讀題目">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                    </svg>
+                </button>
+            </div>
+
+            <div>
+                <h2 id="instruction-text" class="text-xl sm:text-2xl font-bold text-slate-100 mb-1">
+                    請找出 5 個「<span id="target-char" class="text-indigo-400 text-2xl sm:text-3xl mx-1 font-black"></span>」
+                </h2>
+                <div class="flex items-center gap-2">
+                    <div class="text-sm text-slate-400 font-medium whitespace-nowrap">進度</div>
+                    <div class="w-full bg-slate-700 rounded-full h-2.5 overflow-hidden">
+                        <div id="progress-bar" class="bg-indigo-500 h-2.5 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+                    </div>
+                    <div class="text-sm font-bold text-indigo-400 whitespace-nowrap"><span id="score">0</span>/5</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Game Board (Grid) -->
+        <div class="w-full aspect-square bg-slate-800/90 backdrop-blur-sm p-3 sm:p-4 rounded-3xl shadow-xl border border-slate-700 no-select">
+            <div id="game-grid" class="grid grid-cols-5 grid-rows-5 gap-2 sm:gap-3 w-full h-full">
+                <!-- Grid cells generated dynamically -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Success Modal (Hidden initially) -->
+    <div id="success-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl transform scale-90 opacity-0 transition-all duration-300" id="success-modal-content">
+            <div class="text-7xl mb-4 animate-bounce" id="success-emoji">🎉</div>
+            <h3 class="text-2xl font-bold text-white mb-2">恭喜答對！</h3>
+            <p class="text-slate-300 mb-6" id="success-message">你找到了所有的字！</p>
+            <button id="next-level-btn" onclick="nextLevel()" class="w-full py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl shadow-md transition-transform transform active:scale-95 text-lg">
+                下一關
+            </button>
+            <button id="restart-btn" onclick="resetGame()" class="hidden w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-md transition-transform transform active:scale-95 text-lg">
+                重新開始遊戲
+            </button>
+        </div>
+    </div>
+
+    <!-- Background Decorative Elements -->
+    <div class="fixed top-[-10%] left-[-10%] w-64 h-64 bg-indigo-900/40 rounded-full mix-blend-screen filter blur-3xl z-0 pointer-events-none"></div>
+    <div class="fixed bottom-[-10%] right-[-10%] w-72 h-72 bg-purple-900/40 rounded-full mix-blend-screen filter blur-3xl z-0 pointer-events-none"></div>
+
+    <script>
+        // Game Data Configuration
+        const allChars = ['萬', '遇', '邁', '勵'];
+        const levels = [
+            { target: '萬' },
+            { target: '遇' },
+            { target: '邁' },
+            { target: '勵' }
+        ];
+
+        const TOTAL_CELLS = 25;
+        const TARGET_COUNT = 5;
+
+        // Game State & Audio State
+        let currentLevelIndex = 0;
+        let score = 0;
+        let gameOver = false;
+        let synth = window.speechSynthesis;
+        let audioCtx;
+
+        // Initialize or Restart the whole game
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            
+            // 1. 解鎖 Web Audio API (音效)
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            // 2. 解鎖 Web Speech API (語音) - 手機版非常需要這一步
+            // 在點擊的瞬間播放一段無聲的語音，以獲得瀏覽器的語音播放權限
+            if (synth) {
+                const unlockSpeech = new SpeechSynthesisUtterance('');
+                unlockSpeech.volume = 0; // 靜音
+                synth.speak(unlockSpeech);
+            }
+
+            resetGame();
+        }
+
+        function resetGame() {
+            currentLevelIndex = 0;
+            hideSuccessModal();
+            loadLevel();
+        }
+
+        // Load specific level
+        function loadLevel() {
+            score = 0;
+            gameOver = false;
+            updateProgressUI();
+            
+            const levelData = levels[currentLevelIndex];
+            
+            // 過濾掉當前的目標字，剩下的 3 個字作為干擾字
+            const availableDecoys = allChars.filter(c => c !== levelData.target);
+            
+            // Update Header UI
+            document.getElementById('level-indicator').innerText = currentLevelIndex + 1;
+            document.getElementById('target-char').innerText = levelData.target;
+            
+            // Prepare Board Array
+            let boardChars = [];
+            
+            // Add 5 target characters
+            for (let i = 0; i < TARGET_COUNT; i++) {
+                boardChars.push({ char: levelData.target, isTarget: true });
+            }
+            
+            // Fill the rest (20) with decoys from the remaining 3 characters
+            while(boardChars.length < TOTAL_CELLS) {
+                // Randomly pick a decoy character from available ones
+                const randomDecoy = availableDecoys[Math.floor(Math.random() * availableDecoys.length)];
+                boardChars.push({ char: randomDecoy, isTarget: false });
+            }
+
+            // Shuffle array (Fisher-Yates)
+            for (let i = boardChars.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [boardChars[i], boardChars[j]] = [boardChars[j], boardChars[i]];
+            }
+
+            renderBoard(boardChars);
+            
+            // Auto-speak instruction when level loads
+            setTimeout(speakInstruction, 500);
+        }
+
+        function renderBoard(boardChars) {
+            const gridContainer = document.getElementById('game-grid');
+            gridContainer.innerHTML = ''; // Clear previous
+
+            boardChars.forEach((item, index) => {
+                const cell = document.createElement('button');
+                // 國字格子改為白底黑字
+                cell.className = "char-cell bg-white border-2 border-slate-200 rounded-xl sm:rounded-2xl flex items-center justify-center text-4xl sm:text-5xl lg:text-6xl font-bold text-black shadow-md hover:bg-slate-50 hover:border-slate-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400";
+                cell.innerText = item.char;
+                cell.setAttribute('aria-label', `字體 ${item.char}`);
+                
+                let isClicked = false;
+
+                cell.addEventListener('click', function(e) {
+                    if (gameOver || isClicked) return;
+                    
+                    isClicked = true;
+
+                    if (item.isTarget) {
+                        // Correct click
+                        cell.classList.add('clicked-correct');
+                        score++;
+                        updateProgressUI();
+                        
+                        playDingDong(); // 播放叮咚聲
+
+                        if (score === TARGET_COUNT) {
+                            handleLevelComplete();
+                        }
+                    } else {
+                        // Wrong click
+                        cell.classList.add('clicked-wrong');
+                        
+                        playBuzzer(); // 播放錯誤提示音
+                        
+                        // Remove class after animation to allow clicking again (optional, here we keep it visually disabled)
+                        setTimeout(() => {
+                            // cell.classList.remove('clicked-wrong');
+                            // isClicked = false; 
+                        }, 400);
+                    }
+                });
+
+                gridContainer.appendChild(cell);
+            });
+        }
+
+        function updateProgressUI() {
+            document.getElementById('score').innerText = score;
+            const progressPercentage = (score / TARGET_COUNT) * 100;
+            document.getElementById('progress-bar').style.width = `${progressPercentage}%`;
+        }
+
+        function handleLevelComplete() {
+            gameOver = true;
+            
+            // Trigger Confetti
+            triggerConfetti();
+
+            // Speak congratulation
+            speakText("恭喜答對！");
+
+            setTimeout(() => {
+                showSuccessModal();
+            }, 1000); // Wait a bit for confetti
+        }
+
+        function nextLevel() {
+            currentLevelIndex++;
+            hideSuccessModal();
+            
+            if (currentLevelIndex < levels.length) {
+                loadLevel();
+            } else {
+                // Game completely finished
+                showFinalSuccess();
+            }
+        }
+
+        function showSuccessModal() {
+            const modal = document.getElementById('success-modal');
+            const content = document.getElementById('success-modal-content');
+            const nextBtn = document.getElementById('next-level-btn');
+            const restartBtn = document.getElementById('restart-btn');
+            const msg = document.getElementById('success-message');
+            
+            modal.classList.remove('hidden');
+            
+            // Animation trick
+            setTimeout(() => {
+                content.classList.remove('scale-90', 'opacity-0');
+                content.classList.add('scale-100', 'opacity-100');
+            }, 10);
+
+            // Configure modal for inter-level
+            msg.innerText = `太棒了！你找到了所有的「${levels[currentLevelIndex].target}」！`;
+            nextBtn.classList.remove('hidden');
+            restartBtn.classList.add('hidden');
+        }
+
+        function showFinalSuccess() {
+             const modal = document.getElementById('success-modal');
+            const content = document.getElementById('success-modal-content');
+            const nextBtn = document.getElementById('next-level-btn');
+            const restartBtn = document.getElementById('restart-btn');
+            const msg = document.getElementById('success-message');
+            const emoji = document.getElementById('success-emoji');
+            
+            modal.classList.remove('hidden');
+            content.classList.remove('scale-90', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+
+            emoji.innerText = "🏆";
+            msg.innerHTML = "<b>太神啦！</b><br>你成功通過了所有關卡的眼力考驗！";
+            nextBtn.classList.add('hidden');
+            restartBtn.classList.remove('hidden');
+            
+            speakText("太神啦！你成功通過了所有關卡！");
+            triggerConfetti(true); // lots of confetti
+        }
+
+        function hideSuccessModal() {
+            const modal = document.getElementById('success-modal');
+            const content = document.getElementById('success-modal-content');
+            
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-90', 'opacity-0');
+            
+            // 手機版：立即隱藏背景，防止動畫延遲阻擋觸控
+            modal.classList.add('hidden');
+        }
+
+        // --- Text-to-Speech ---
+        function speakInstruction() {
+            if (!levels[currentLevelIndex]) return;
+            const targetChar = levels[currentLevelIndex].target;
+            const text = `請找出五個「${targetChar}」。`;
+            speakText(text);
+        }
+
+        function speakText(text) {
+            try {
+                if (synth && synth.speaking) {
+                    synth.cancel(); // Stop current speech
+                }
+                
+                const utterThis = new SpeechSynthesisUtterance(text);
+                utterThis.lang = 'zh-TW';
+                utterThis.rate = 0.9; // Slightly slower for clarity
+                utterThis.pitch = 1.1; // Slightly higher, more friendly
+                
+                // Try to find a specific Taiwanese/Chinese voice if available
+                const voices = synth.getVoices();
+                const twVoice = voices.find(voice => voice.lang === 'zh-TW' || voice.lang === 'zh-HK');
+                if (twVoice) {
+                    utterThis.voice = twVoice;
+                }
+
+                synth.speak(utterThis);
+            } catch (error) {
+                console.log("語音播放被手機瀏覽器阻擋，但不影響遊戲進行:", error);
+            }
+        }
+
+        // --- Visual Effects ---
+        function triggerConfetti(massive = false) {
+            if (typeof confetti !== 'function') return; // Ensure library loaded
+
+            if (massive) {
+                var duration = 3000;
+                var animationEnd = Date.now() + duration;
+                var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 60 };
+
+                var interval = setInterval(function() {
+                    var timeLeft = animationEnd - Date.now();
+
+                    if (timeLeft <= 0) {
+                        return clearInterval(interval);
+                    }
+
+                    var particleCount = 50 * (timeLeft / duration);
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+                }, 250);
+            } else {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    zIndex: 60
+                });
+            }
+        }
+        
+        function randomInRange(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        // --- Audio Effects (Web Audio API) ---
+        function playDingDong() {
+            try {
+                if (!audioCtx) return;
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                osc1.type = 'sine';
+                osc2.type = 'sine';
+                
+                // 叮 (Ding)
+                osc1.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+                // 咚 (Dong)
+                osc2.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.15); // E5
+
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.02);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+
+                osc1.connect(gainNode);
+                osc2.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                osc1.start(audioCtx.currentTime);
+                osc1.stop(audioCtx.currentTime + 0.15);
+                
+                osc2.start(audioCtx.currentTime + 0.15);
+                osc2.stop(audioCtx.currentTime + 0.6);
+            } catch (error) {
+                console.log("音效播放錯誤:", error);
+            }
+        }
+
+        function playBuzzer() {
+            try {
+                if (!audioCtx) return;
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                // 錯誤音效 (Buzzer)
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.3);
+            } catch (error) {
+                console.log("音效播放錯誤:", error);
+            }
+        }
+
+        // Load voices explicitly for some browsers (like Chrome)
+        speechSynthesis.onvoiceschanged = function() {
+            // Voices are loaded
+        };
+
+    </script>
+</body>
+</html>
